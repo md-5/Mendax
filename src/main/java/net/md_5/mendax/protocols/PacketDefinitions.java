@@ -1,17 +1,27 @@
-package net.md_5.mendax;
+package net.md_5.mendax.protocols;
 
-import static net.md_5.mendax.PacketDefinitions.OpCode.*;
+import net.md_5.mendax.datainput.Instruction;
+import net.md_5.mendax.datainput.Jump;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static net.md_5.mendax.protocols.PacketDefinitions.OpCode.*;
 
 public class PacketDefinitions {
 
-    public static final OpCode[][] opCodes = new OpCode[256][];
+    public final OpCode[][] opCodes = new OpCode[256][];
+
+	public static final PacketDefinitions VANILLA = new VanillaPacketDefinitions();
+	public static final PacketDefinitions FORGE = new ForgePacketDefinitions();
+
+	public final Instruction[][] instructions = new Instruction[256][];
 
     public enum OpCode {
-
         BOOLEAN, BULK_CHUNK, BYTE, BYTE_INT, DOUBLE, FLOAT, INT, INT_3, INT_BYTE, ITEM, LONG, METADATA, OPTIONAL_MOTION, SHORT, SHORT_BYTE, SHORT_ITEM, STRING, USHORT_BYTE
     }
 
-    static {
+	protected PacketDefinitions() {
         opCodes[0x00] = new OpCode[]{INT};
         opCodes[0x01] = new OpCode[]{INT, STRING, BYTE, BYTE, BYTE, BYTE, BYTE};
         opCodes[0x02] = new OpCode[]{BYTE, STRING, STRING, INT};
@@ -125,4 +135,40 @@ public class PacketDefinitions {
         opCodes[0xFE] = new OpCode[]{}; // Should be byte, screw you too bitchy server admins!
         opCodes[0xFF] = new OpCode[]{STRING};
     }
+
+	protected void initializeInstructions() {
+		for (int i = 0; i < instructions.length; i++) {
+			List<Instruction> output = new ArrayList<Instruction>();
+
+			OpCode[] enums = opCodes[i];
+			if (enums != null) {
+				for (OpCode struct : enums) {
+					try {
+						output.add((Instruction) Instruction.class.getDeclaredField(struct.name()).get(null));
+					} catch (Exception ex) {
+						throw new UnsupportedOperationException("No definition for " + struct.name());
+					}
+				}
+
+				List<Instruction> crushed = new ArrayList<Instruction>();
+				int nextJumpSize = 0;
+				for (Instruction child : output) {
+					if (child instanceof Jump) {
+						nextJumpSize += ((Jump) child).len;
+					} else {
+						if (nextJumpSize != 0) {
+							crushed.add(new Jump(nextJumpSize));
+						}
+						crushed.add(child);
+						nextJumpSize = 0;
+					}
+				}
+				if (nextJumpSize != 0) {
+					crushed.add(new Jump(nextJumpSize));
+				}
+
+				instructions[i] = crushed.toArray(new Instruction[crushed.size()]);
+			}
+		}
+	}
 }

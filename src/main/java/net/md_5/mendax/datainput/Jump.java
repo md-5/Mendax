@@ -3,11 +3,11 @@ package net.md_5.mendax.datainput;
 import java.io.DataInput;
 import java.io.IOException;
 
-class Jump extends Instruction {
+public class Jump extends Instruction {
 
-    final int len;
+    public final int len;
 
-    Jump(int len) {
+	public Jump(int len) {
         if (len < 0) {
             throw new IndexOutOfBoundsException();
         }

@@ -1,55 +1,36 @@
 package net.md_5.mendax.datainput;
 
+import net.md_5.mendax.protocols.PacketDefinitions;
+
 import java.io.DataInput;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import net.md_5.mendax.PacketDefinitions;
-import net.md_5.mendax.PacketDefinitions.OpCode;
 
 public class DataInputPacketReader {
+	private PacketDefinitions packetDefinitions;
 
-    private static final Instruction[][] instructions = new Instruction[256][];
+	public DataInputPacketReader() {
+		this(PacketDefinitions.VANILLA);
+	}
 
-    static {
-        for (int i = 0; i < instructions.length; i++) {
-            List<Instruction> output = new ArrayList<Instruction>();
+	public DataInputPacketReader(PacketDefinitions packetDefinitions) {
+		this.packetDefinitions = null;
+		setPacketDefinitions(packetDefinitions);
+	}
 
-            OpCode[] enums = PacketDefinitions.opCodes[i];
-            if (enums != null) {
-                for (OpCode struct : enums) {
-                    try {
-                        output.add((Instruction) Instruction.class.getDeclaredField(struct.name()).get(null));
-                    } catch (Exception ex) {
-                        throw new UnsupportedOperationException("No definition for " + struct.name());
-                    }
-                }
+	public PacketDefinitions getPacketDefinitions() {
+		return packetDefinitions;
+	}
 
-                List<Instruction> crushed = new ArrayList<Instruction>();
-                int nextJumpSize = 0;
-                for (Instruction child : output) {
-                    if (child instanceof Jump) {
-                        nextJumpSize += ((Jump) child).len;
-                    } else {
-                        if (nextJumpSize != 0) {
-                            crushed.add(new Jump(nextJumpSize));
-                        }
-                        crushed.add(child);
-                        nextJumpSize = 0;
-                    }
-                }
-                if (nextJumpSize != 0) {
-                    crushed.add(new Jump(nextJumpSize));
-                }
+	public void setPacketDefinitions(PacketDefinitions packetDefinitions) {
+		if(packetDefinitions == this.packetDefinitions)
+			return;
 
-                instructions[i] = crushed.toArray(new Instruction[crushed.size()]);
-            }
-        }
+		this.packetDefinitions = packetDefinitions;
     }
 
-    public static void readPacket(DataInput in) throws IOException {
+    public void readPacket(DataInput in) throws IOException {
         int packetId = in.readUnsignedByte();
-        Instruction[] packetDef = instructions[packetId];
+        Instruction[] packetDef = packetDefinitions.instructions[packetId];
 
         if (packetDef == null) {
             throw new IOException("Unknown packet id " + packetId);
